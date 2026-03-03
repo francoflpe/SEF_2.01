@@ -1,0 +1,26 @@
+{
+    "projectMetadata": {
+        "programa": "SEF - Software de Estudos Focus",
+        "versao": "2.0.0",
+        "dataDeCriacao": "27/02/2026 16:13",
+        "CS": "123",
+        "cliente": "123"
+    },
+    "projectTree": {
+        "d08625a9-724e-42ac-957d-39627ad35453": {
+            "logicalId": "root",
+            "displayName": "CS-123 - 123",
+            "isDataNode": false,
+            "nodes": {
+                "b7ef8e1a-6889-4407-b75c-eb5102fc57b7": {
+                    "logicalId": "node-1",
+                    "displayName": "Novo Subitem",
+                    "isDataNode": true,
+                    "data": {},
+                    "nodes": {}
+                }
+            },
+            "data": {}
+        }
+    }
+}
