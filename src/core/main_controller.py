@@ -868,12 +868,19 @@ class MainController(QObject):
         Remove um nó de dados filho de um tipo específico.
         Operação permanente que salva no arquivo.
         
+        **NOTA IMPORTANTE:** Este método é chamado via sync_data_nodes_for_parent(),
+        que já pede confirmação ao usuário ANTES de chamar este método.
+        Portanto, NÃO pedimos confirmação novamente aqui.
+        
         Args:
             parent_uuid: UUID do nó pai
             data_type: Tipo de dado a ser removido (ex: "barras", "cabos_bt")
             
         Returns:
             True se o nó foi removido com sucesso, False caso contrário
+            
+        Chamado por:
+            - sync_data_nodes_for_parent() (após confirmação do usuário)
         """
         # Chama o método do modelo
         project_data = self.model.remove_data_node(parent_uuid, data_type)
@@ -902,8 +909,25 @@ class MainController(QObject):
 
     def handle_delete_item_by_uuid(self, node_uuid: str, confirm: bool = False):
         """
-        Exclui um nó pelo seu UUID. Se `confirm` for True, pede confirmação.
-        Esta função centraliza a lógica de exclusão permanente.
+        **FUNÇÃO CENTRAL DE EXCLUSÃO DE NÓS**
+        
+        Esta é a ÚNICA função no controller que chama `self.model.delete_node()`.
+        Todas as operações de exclusão devem passar por aqui para garantir consistência.
+        
+        Args:
+            node_uuid: UUID do nó a ser excluído
+            confirm: Se True, pede confirmação ao usuário antes de excluir
+            
+        Fluxo:
+            1. Valida o nó
+            2. Pede confirmação (se confirm=True)
+            3. Chama model.delete_node()
+            4. Salva o projeto (operação permanente)
+            5. Atualiza a UI
+            
+        Chamada por:
+            - handle_delete_item() (menu de contexto)
+            - handle_delete_key_press() (tecla Delete)
         """
         if not node_uuid:
             return
@@ -924,6 +948,7 @@ class MainController(QObject):
                 QMessageBox.StandardButton.No
             )
             if reply != QMessageBox.StandardButton.Yes:
+                self.view.update_status_message("Exclusão cancelada.")
                 return
 
         # Exclui o nó do modelo de dados
@@ -1047,7 +1072,8 @@ class MainController(QObject):
     def handle_delete_key_press(self):
         """
         Chamado quando a tecla Delete é pressionada.
-        Delega a lógica para a função centralizada handle_delete_item.
+        Delega para handle_delete_item() que por sua vez delega para
+        a função central handle_delete_item_by_uuid() com confirmação.
         """
         current_index = self.view.tree_view.currentIndex()
         if current_index.isValid():
@@ -1056,8 +1082,12 @@ class MainController(QObject):
     
     def handle_delete_item(self, index):
         """
-        Manipula a exclusão de um item a partir de um QModelIndex (vinda do menu de contexto).
-        Delega a lógica para a função centralizada handle_delete_item_by_uuid.
+        Manipula a exclusão de um item a partir de um QModelIndex.
+        Chamado por: menu de contexto e handle_delete_key_press().
+        Delega para a função central handle_delete_item_by_uuid() COM confirmação.
+        
+        Args:
+            index: QModelIndex do item a ser excluído
         """
         if not index.isValid():
             return
@@ -1073,7 +1103,7 @@ class MainController(QObject):
             QMessageBox.warning(self.view, "Operação Não Permitida", "Não é possível excluir o nó raiz.")
             return
 
-        # Chama a nova função central, pedindo confirmação (confirm=True)
+        # Chama a função central de exclusão, pedindo confirmação (confirm=True)
         self.handle_delete_item_by_uuid(item_uuid, confirm=True)
     
     def handle_toggle_explorer(self, checked: bool):

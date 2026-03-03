@@ -1,53 +1,248 @@
+# SEF-2.01 - Software de Estudos Focus
 
-SEF Project — Uso e instruções
+## Resumo
 
-Resumo
-- Este repositório contém o diálogo `DataEntryDialog` (PyQt6) para inserir/importar dados em nós de um projeto JSON, utilitários de migração para converter placeholders legados e uma política de escrita segura (merge-on-write com backup único).
+Aplicação desktop em PyQt6 para gerenciamento de projetos elétricos com arquitetura MVC robusta. 
 
-Arquivos principais
-- `data_dialog.py`: implementação do diálogo `DataEntryDialog` — inserção/importação, UI dinâmica baseada em `data_map.json`, pré-preenchimento, resumo de ações (Adicionar / Ignorar / Remover) e escrita com backup único.
-- `project_config.py`: gerencia a seleção/persistência do arquivo de projeto atual (arquivo `.current_project`).
-- `migrate_data.py`: função `migrate_project(path)` que atualiza formatos legados no arquivo de projeto.
-- `data_map.json` / `data_map.py`: schema dos tipos (campos dinâmicos) usados para criar os QLineEdit por tipo.
+O projeto permite:
+- Criar e gerenciar projetos hierárquicos (árvore de nós)
+- Adicionar tipos de dados específicos (barras, cabos, disjuntores, etc.)
+- Importar/exportar dados de arquivos Excel, CSV e JSON
+- Sincronizar automaticamente nós de dados
+- Visualizar dados tabulares com Pandas
+- Salvar projetos em formato JSON estruturado
 
-Requisitos
-- Python 3.10+ (testado com 3.13)
-- `PyQt6`
-- Opcional para Excel: `pandas` e `openpyxl` (recomendado se for importar `.xlsx`)
+## Arquitetura
 
-Instalação (virtualenv)
+O projeto segue **padrão MVC** estrito com estrutura modular:
+
+```
+src/
+├── main.py                 # Ponto de entrada
+├── core/                   # Núcleo MVC
+│   ├── main_controller.py # Orquestrador
+│   ├── main_view.py       # Interface Qt
+│   ├── project_model.py   # Lógica de negócio
+│   └── commands.py        # Undo/Redo
+├── components/            # Componentes UI reutilizáveis
+│   ├── data_entry_dialog.py
+│   └── project_metadata_dialog.py
+├── data/                  # Camada de dados
+│   ├── data_map.py       # Schemas de tipos
+│   ├── data_map.json     # Configuração de schemas
+│   └── pandas_model.py   # Adapter Pandas↔Qt
+├── data_models/          # Modelos especializados (FUTURO)
+│   └── barras_model.py   # Template de exemplo
+└── utils/                # Utilitários
+    ├── project_config.py
+    ├── migration.py
+    └── migrate_cli.py
+```
+
+Ver [ARQUITETURA.md](ARQUITETURA.md) para detalhes completos.
+
+## Requisitos
+
+- **Python 3.13+**
+- PyQt6 (interface gráfica)
+- pandas (manipulação de dados)
+- openpyxl (importação Excel - opcional)
+
+## Instalação
+
 ```bash
+# Clone o repositório
+git clone <repository-url>
+cd SEF-2.01
+
+# Crie ambiente virtual (recomendado)
 python -m venv .venv
-source .venv/Scripts/activate    # Windows: .venv\Scripts\activate
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+# Instale dependências
 pip install -r requirements.txt
 ```
 
-Como usar
-- Execução interativa (abrir o diálogo): importe e instancie `DataEntryDialog` em um script PyQt6 ou integre ao seu app Qt. Exemplo mínimo (executável):
+## Execução
 
-```python
-from PyQt6.QtWidgets import QApplication
-from data_dialog import DataEntryDialog
+### Windows
+```bash
+# Opção 1: Script conveniente
+run.bat
 
-app = QApplication([])
-dlg = DataEntryDialog(node_uuid="<UUID_DO_NO>")
-dlg.exec()
+# Opção 2: Comando direto
+python src/main.py
 ```
 
-- Teste rápido não interativo: existe um snippet de desenvolvimento que instancia o diálogo programaticamente, marca checkboxes e chama `do_insert()` (útil para automação de testes). Para testes que envolvem arquivos Excel assegure-se de ter `pandas` e `openpyxl` instalados.
+### Linux/Mac
+```bash
+python src/main.py
+```
 
-Migração automática
-- Ao abrir `DataEntryDialog` o código chama `migrate_project()` no arquivo de projeto atual. Caso a migração faça alterações, um backup único (`<basename>.bak`) será criado no mesmo diretório do projeto.
+## Funcionalidades Principais
 
-Política de backup
-- Sempre que o diálogo gravar alterações produzidas pela inserção/importação, o arquivo original do projeto é copiado para `<basename>.bak` (sobrescrevendo o backup anterior). Isso evita a proliferação de arquivos de backup.
+### 1. Gerenciamento de Projetos
+- Criar novo projeto com metadados (CS, cliente)
+- Abrir projetos existentes (JSON)
+- Salvar/Salvar Como
+- Detectar mudanças não salvas
 
-Notas de integração
-- Use `project_config.get_project_file()` para obter o caminho do projeto em outros scripts do repositório.
-- O resumo mostrado na UI (`summary_view`) exibe os rótulos visíveis dos `QCheckBox` (por exemplo "Disjuntores BT") para maior usabilidade.
+### 2. Árvore Hierárquica
+- Adicionar/remover nós
+- Renomear nós (F2)
+- Excluir nós (Delete)
+- Copiar/colar estruturas
+- Menu de contexto
 
-Contribuindo / próximos passos
-- Documentar exemplos de migração em massa e adicionar testes automatizados adicionais.
+### 3. Tipos de Dados
+- **Barras** - Barramentos elétricos
+- **Cabos BT/MT** - Cabos de baixa/média tensão
+- **Disjuntores BT/MT** - Dispositivos de proteção
+- **Fusíveis** - Proteção por fusível
+- **Chaves Seccionadoras** - Chaves de manobra
+- **Saturação TC** - Transformadores de corrente
+
+### 4. Editor de Dados
+- Interface intuitiva com checkboxes
+- Pré-visualização de mudanças (Adicionar/Ignorar/Remover)
+- Importação de Excel/CSV/JSON
+- Validação de unicidade (não permite duplicatas)
+- Confirmação de remoções
+- Backup automático (.bak)
+
+### 5. Visualização
+- QTreeView - Explorador de projeto
+- QTableView - Dados tabulares (Pandas)
+- Alternância de visualização por tipo
+
+## Refatorações Recentes (Março 2026)
+
+### Fase 1: Centralização da Lógica de Sincronização
+✅ **Método único:** `ProjectModel.sync_data_nodes()`  
+✅ **Orquestração:** `MainController.sync_data_nodes_for_parent()`  
+✅ **Simplificação:** `DataEntryDialog.do_insert()` → uma única chamada  
+
+### Fase 2: Unificação da Lógica de Exclusão
+✅ **Função central:** `MainController.handle_delete_item_by_uuid()`  
+✅ **Consistência:** Todas exclusões passam pelo mesmo fluxo  
+✅ **Confirmação:** Sempre pede confirmação antes de excluir  
+
+### Fase 3: Preparação para Expansão
+✅ **Estrutura modular:** `src/data_models/` criado  
+✅ **Template:** `barras_model.py` como exemplo  
+✅ **Documentação:** ARQUITETURA.md completo  
+
+Ver [REFATORACAO.md](REFATORACAO.md) para histórico detalhado.
+
+## Estrutura de Dados (JSON)
+
+```json
+{
+  "projectMetadata": {
+    "programa": "SEF - Software de Estudos Focus",
+    "versao": "2.0.0",
+    "dataDeCriacao": "03/03/2026 12:00",
+    "CS": "1234",
+    "cliente": "Empresa XYZ"
+  },
+  "projectTree": {
+    "<uuid>": {
+      "logicalId": "root",
+      "displayName": "CS-1234 - Empresa XYZ",
+      "isDataNode": true,
+      "nodes": {
+        "<uuid-filho>": {
+          "logicalId": "node-1",
+          "displayName": "Subestação Principal",
+          "isDataNode": false,
+          "dataType": "barras",
+          "data": {
+            "componentType": "Bus",
+            "nominalVoltage": "13800",
+            ...
+          },
+          "nodes": {}
+        }
+      }
+    }
+  }
+}
+```
+
+## Migração de Dados
+
+Para migrar projetos em lote:
+
+```bash
+# Arquivo único
+python src/utils/migrate_cli.py --file projeto.json
+
+# Diretório recursivo
+python src/utils/migrate_cli.py --dir ./projetos
+```
+
+## Desenvolvimento Futuro
+
+### Modelos Especializados (`src/data_models/`)
+Cada tipo de dado poderá ter:
+- Validações específicas
+- Widgets customizados
+- Formatação de valores
+- Cálculos derivados
+
+Exemplo:
+```python
+from data_models.barras_model import BarrasModel
+
+model = BarrasModel()
+headers = model.get_column_headers()
+is_valid, errors = model.validate_data(data_dict)
+widget = model.get_editor_widget("nominalVoltage")
+```
+
+### Regras de Negócio (`src/core/business/`)
+Lógica complexa separada do Model principal:
+- Cálculos elétricos
+- Validações multi-campos
+- Conversões de unidades
+
+### Testes Automatizados (`tests/`)
+```bash
+pytest tests/
+```
+
+## Contribuindo
+
+1. Fork o repositório
+2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## Princípios de Design
+
+- **MVC Estrito:** Separação clara de responsabilidades
+- **Single Source of Truth:** Operações centralizadas
+- **DRY:** Evitar duplicação de código
+- **Extensibilidade:** Fácil adicionar novos tipos
+- **Testabilidade:** Lógica isolável
+
+## Suporte
+
+Para dúvidas ou problemas:
+1. Consulte [ARQUITETURA.md](ARQUITETURA.md)
+2. Consulte [REFATORACAO.md](REFATORACAO.md)
+3. Abra uma issue no repositório
+
+## Licença
+
+[Especificar licença]
+
+---
+
+**Versão:** 2.0.0  
+**Última atualização:** Março 2026
 
 Contato
 - Se quiser, adiciono um script `run_merge_test.py` ou exemplos adicionais de uso (testes automatizados). Diga qual você prefere.

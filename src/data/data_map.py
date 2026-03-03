@@ -99,6 +99,27 @@ _DEFAULT_MAP = {
 
 _cache: Optional[Dict[str, Any]] = None
 
+_TYPE_TO_LABEL_MAP = None
+
+def _get_type_to_label_map() -> Dict[str, str]:
+    """Carrega e cacheia o mapa de `dataType` para `displayName`."""
+    global _TYPE_TO_LABEL_MAP
+    if _TYPE_TO_LABEL_MAP is None:
+        _TYPE_TO_LABEL_MAP = {
+            "barras": "Barras",
+            "disj_bt": "Disjuntores BT",
+            "disj_mt": "Disjuntores MT",
+            "fusiveis": "Fusíveis",
+            "chaves_sec": "Chaves Seccionadoras",
+            "cabos_bt": "Cabos BT",
+            "cabos_mt": "Cabos MT",
+            "saturacao_tc": "Saturação TC",
+        }
+    return _TYPE_TO_LABEL_MAP
+
+def get_label(type_name: str) -> Optional[str]:
+    """Retorna o nome de exibição (label) para um `dataType`."""
+    return _get_type_to_label_map().get(type_name)
 
 def _default_path() -> str:
     return os.path.join(os.path.dirname(__file__), "data_map.json")

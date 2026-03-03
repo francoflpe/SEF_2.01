@@ -770,3 +770,78 @@ class ProjectModel:
         except Exception as e:
             print(f"Erro ao atualizar dados do nó: {e}")
             return False
+
+    def get_types_to_remove(self, parent_uuid: str, desired_types: set) -> set:
+        """
+        Compara os tipos de dados existentes com os desejados e retorna os que seriam removidos.
+        
+        Args:
+            parent_uuid: UUID do nó pai.
+            desired_types: Set de `dataType`s que devem permanecer.
+            
+        Returns:
+            Set de `dataType`s que seriam removidos.
+        """
+        try:
+            parent_node, _ = self._find_node_by_uuid(parent_uuid)
+            if not parent_node or 'nodes' not in parent_node:
+                return set()
+
+            existing_types = {
+                node.get('dataType') 
+                for node in parent_node['nodes'].values() 
+                if 'dataType' in node
+            }
+            
+            return existing_types - desired_types
+        except Exception as e:
+            print(f"Erro em get_types_to_remove: {e}")
+            return set()
+
+    def sync_data_nodes(self, parent_uuid: str, desired_types: set) -> bool:
+        """
+        Sincroniza os nós filhos de um nó pai para corresponder aos `desired_types`.
+        Adiciona os que faltam e remove os que sobejam.
+        
+        Args:
+            parent_uuid: UUID do nó pai.
+            desired_types: Set de `dataType`s que devem existir.
+            
+        Returns:
+            True se alguma alteração foi feita, False caso contrário.
+        """
+        try:
+            parent_node, _ = self._find_node_by_uuid(parent_uuid)
+            if not parent_node or 'nodes' not in parent_node:
+                # Se o nó pai não tem 'nodes', cria a estrutura
+                if parent_node:
+                    parent_node['nodes'] = {}
+                else:
+                    return False
+
+            existing_types = {
+                node.get('dataType') 
+                for node in parent_node['nodes'].values() 
+                if 'dataType' in node
+            }
+
+            to_add = desired_types - existing_types
+            to_remove = existing_types - desired_types  # CORREÇÃO: era "existing_types - existing_types"
+
+            if not to_add and not to_remove:
+                return False
+
+            # Processa remoções
+            for data_type in to_remove:
+                self.remove_data_node(parent_uuid, data_type)
+
+            # Processa adições
+            for data_type in to_add:
+                display_name = data_map.get_label(data_type)
+                if display_name:
+                    self.add_data_node(parent_uuid, display_name, data_type)
+            
+            return True
+        except Exception as e:
+            print(f"Erro em sync_data_nodes: {e}")
+            return False

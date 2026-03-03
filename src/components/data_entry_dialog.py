@@ -584,52 +584,18 @@ class DataEntryDialog(QDialog):
 
     def do_insert(self):
         """
-        Compara o estado atual do projeto com os checkboxes selecionados para
-        determinar quais nós de dados devem ser adicionados ou removidos.
-        Cada operação é confirmada e persistida pelo controller.
+        Coleta os tipos de dados selecionados e solicita ao controller
+        para sincronizar os nós de dados do nó pai.
         """
         if not hasattr(self, 'controller') or not self.controller:
             QMessageBox.critical(self, "Erro", "Referência ao Controller não encontrada.")
             return
 
-        # 1. Obter estado atual e estado desejado
+        # 1. Coletar o set de tipos de dados desejados a partir dos checkboxes
         selected_types = {tipo for tipo, cb in self.checkboxes.items() if cb.isChecked()}
-        
-        # Busca os tipos de dados que já existem como filhos do nó atual
-        existing_nodes = self.controller.get_child_data_nodes(self.node_uuid)
-        existing_types = {node['dataType'] for node in existing_nodes.values()}
 
-        # 2. Calcular o que adicionar e o que remover
-        to_add = selected_types - existing_types
-        to_remove = existing_types - selected_types
+        # 2. Chamar um único método no controller para orquestrar a sincronização
+        self.controller.sync_data_nodes_for_parent(self.node_uuid, selected_types)
 
-        if not to_add and not to_remove:
-            QMessageBox.information(self, "Nenhuma Alteração", "O projeto já está no estado desejado.")
-            self.accept()
-            return
-
-        # 3. Processar remoções com confirmação
-        if to_remove:
-            # Pega os nomes de exibição (ex: "Disjuntores BT") para a mensagem
-            # Usa um dicionário de tipo -> nome para encontrar o nome correto do nó a ser removido
-            type_to_display_name = {node['dataType']: node['displayName'] for node in existing_nodes.values()}
-            names_to_remove = "\n".join([type_to_display_name.get(t, t) for t in to_remove])
-            
-            reply = QMessageBox.question(self, "Confirmar Remoção",
-                "Os seguintes tipos de dados serão REMOVIDOS:\n\n" + names_to_remove + "\n\nDeseja continuar?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No)
-
-            if reply == QMessageBox.StandardButton.Yes:
-                for tipo in to_remove:
-                    # Remove o nó pelo tipo (mais direto que buscar UUID)
-                    self.controller.remove_data_node(self.node_uuid, tipo)
-        
-        # 4. Processar adições
-        if to_add:
-            for tipo in to_add:
-                display_name = self.label_for(tipo) # "Disjuntores BT"
-                self.controller.add_data_node(self.node_uuid, display_name, tipo)
-
-        # 5. Fechar o diálogo
+        # 3. Fechar o diálogo
         self.accept()
